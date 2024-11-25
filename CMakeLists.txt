@@ -35,7 +35,12 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(RT RT.c )
+add_executable(RT 
+    RT.c
+    system/command_sequence.c 
+    system/state_machine.c
+    config/A_conf.c
+    )
 
 pico_set_program_name(RT "RT")
 pico_set_program_version(RT "0.1")
@@ -50,7 +55,7 @@ target_link_libraries(RT
 
 # Add the standard include files to the build
 target_include_directories(RT PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/system
 )
 
 pico_add_extra_outputs(RT)
