@@ -1,0 +1,99 @@
+#include "scheduler.h"
+#include <stdio.h>
+#include <time.h>  // Per misurare il tempo di esecuzione
+#include <stdlib.h>  // Per simulare l'occupazione di memoria
+
+static task_t task_list[MAX_TASKS];  // Array per memorizzare i task
+static int task_count = 0;           // Contatore del numero di task registrati
+
+// Funzione per aggiungere un task allo scheduler
+void scheduler_add_task(task_func_t task, int priority, clock_t interval) {
+    if (task_count < MAX_TASKS) {
+        task_list[task_count].task = task;
+        task_list[task_count].priority = priority;
+        task_list[task_count].interval = interval;
+        task_list[task_count].last_execution = 0;
+        task_list[task_count].start_time = 0;
+        task_list[task_count].total_time = 0;
+        task_list[task_count].memory_used = 0;
+        task_count++;
+    }
+}
+
+// Funzione per simulare l'utilizzo di memoria da parte di un task
+void simulate_memory_usage(int task_index, size_t bytes) {
+    task_list[task_index].memory_used += bytes;
+    printf("Task %d sta usando %zu bytes di memoria.\n", task_index, task_list[task_index].memory_used);
+}
+
+// Funzione principale dello scheduler
+void scheduler_run(void) {
+    while (1) {
+        int highest_priority_index = -1;
+        int highest_priority = -1;
+
+        // Trova il task con la priorità più alta che è pronto per essere eseguito
+        for (int i = 0; i < task_count; i++) {
+            clock_t current_time = clock();
+            if (task_list[i].task && (current_time - task_list[i].last_execution >= task_list[i].interval)) {
+                if (task_list[i].priority > highest_priority) {
+                    highest_priority = task_list[i].priority;
+                    highest_priority_index = i;
+                }
+            }
+        }
+
+        // Esegui il task con la priorità più alta trovato
+        if (highest_priority_index != -1) {
+            int i = highest_priority_index;
+            clock_t current_time = clock();
+
+            // Misura il tempo di start del task
+            clock_t start_time = clock();
+            task_list[i].start_time = start_time;
+
+            // Esegui il task corrente
+            task_list[i].task();
+
+            // Misura il tempo di fine e calcola il tempo totale di esecuzione
+            clock_t end_time = clock();
+            clock_t task_time = end_time - start_time;
+            task_list[i].total_time += task_time;
+            task_list[i].last_execution = current_time;
+
+            // Stampa il tempo di esecuzione del task
+            printf("Task %d: Tempo di esecuzione = %ld ticks, Tempo totale = %ld ticks\n", i, task_time, task_list[i].total_time);
+        }
+    }
+}
+
+// Definizione dei task
+void task1(void) {
+    printf("Esecuzione Task 1\n");
+    simulate_memory_usage(0, 50);  // Simulazione di memoria usata da task1
+    // Codice specifico del Task 1
+}
+
+void task2(void) {
+    printf("Esecuzione Task 2\n");
+    simulate_memory_usage(1, 30);  // Simulazione di memoria usata da task2
+    // Codice specifico del Task 2
+}
+
+void task3(void) {
+    printf("Esecuzione Task 3\n");
+    simulate_memory_usage(2, 40);  // Simulazione di memoria usata da task3
+    // Codice specifico del Task 3
+}
+
+int main(void) {
+    // Aggiungi i task allo scheduler con priorità e intervallo di esecuzione
+    scheduler_add_task(task1, 1, CLOCKS_PER_SEC * 1);  // Task 1 con priorità 1 e intervallo di 1 secondo
+    scheduler_add_task(task2, 2, CLOCKS_PER_SEC * 2);  // Task 2 con priorità 2 e intervallo di 2 secondi
+    scheduler_add_task(task3, 3, CLOCKS_PER_SEC * 3);  // Task 3 con priorità 3 e intervallo di 3 secondi
+
+    // Avvia lo scheduler
+    scheduler_run();
+
+    return 0;
+}

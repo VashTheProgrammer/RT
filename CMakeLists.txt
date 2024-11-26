@@ -39,6 +39,7 @@ add_executable(RT
     RT.c
     system/command_sequence.c 
     system/state_machine.c
+    system/scheduler_core.c
     config/A_conf.c
     )
 
@@ -51,7 +52,8 @@ pico_enable_stdio_usb(RT 0)
 
 # Add the standard library to the build
 target_link_libraries(RT
-        pico_stdlib)
+        pico_stdlib
+        pico_multicore)
 
 # Add the standard include files to the build
 target_include_directories(RT PRIVATE

@@ -1,10 +1,11 @@
 #include <stdio.h>
-#include "pico/stdlib.h"
 #include "hardware/uart.h"
+#include "pico/stdlib.h"
 
 #include "command_sequence.h"
 #include "state_machine.h"
 #include "config.h"
+#include "scheduler.h"
 
 #define UART0_TX_PIN 0
 #define UART0_RX_PIN 1
@@ -13,6 +14,36 @@
 #define LED_PIN 25
 
 #define BAUD_RATE 115200
+
+// CLOCK_PER_SEC in RP2040 è 100 !
+
+bool led_on = false;
+
+void task_1(void){
+    led_on = !led_on;
+    gpio_put(LED_PIN, led_on);
+}
+
+void task_2(void){
+    // Se c'è un dato disponibile sulla UART0 (PC), invialo alla UART1 (ESP32)
+    if (uart_is_readable(uart0)) {
+        uint8_t data = uart_getc(uart0);
+        uart_putc(uart1, data);
+    }
+
+    // Se c'è un dato disponibile sulla UART1 (ESP32), invialo alla UART0 (PC)
+    if (uart_is_readable(uart1)) {
+        uint8_t data = uart_getc(uart1);
+        uart_putc(uart0, data);
+    }
+}
+
+at_command_state_t state = STATE_SEND_AT_GMR;  // Stato iniziale
+int at_command_counter = 0;
+
+void task_3(void){
+    state_machine(&state, &at_command_counter);
+}
 
 int main()
 {
@@ -31,43 +62,19 @@ int main()
 
     // Inizializza il pin del LED
     gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    // Variabile per il controllo del tempo per il blink del LED
-    absolute_time_t led_time = make_timeout_time_ms(500);
-    bool led_on = false;
-
-    absolute_time_t command_time = make_timeout_time_ms(2000);  // Prima attesa di 2 secondi
-    int at_command_counter = 0;
+    gpio_set_dir(LED_PIN, GPIO_OUT);    
 
     // Aggiorna i comandi con i parametri configurati
     update_command_sequence(&iot_config);
-
     at_command_state_t state = STATE_WAIT_BEFORE_START;
 
-    // Loop principale per fare da bridge tra le due UART, gestire la macchina a stati, e blink del LED
-    while (true) {
+    // Aggiungi alcuni task allo scheduler
+    scheduler_add_task(task_1, 2, 50);     // Priorità 2, intervallo 50 ticks -> 500 millisec
+    scheduler_add_task(task_2, 1, 0.1);     // Priorità 1, intervallo 0.1 ticks -> 1 millisec
+    scheduler_add_task(task_3, 3, 500);     // Priorità 1, intervallo 500 ticks -> 5000 millisec
 
-        // Controlla se è il momento di cambiare lo stato del LED
-        if (absolute_time_diff_us(get_absolute_time(), led_time) <= 0) {
-            led_on = !led_on;
-            gpio_put(LED_PIN, led_on);
-            led_time = make_timeout_time_ms(500);
-        }
+    // Avvia lo scheduler (loop infinito)
+    scheduler_run();
 
-        // Gestisci la macchina a stati
-        state_machine(&state, &command_time, &led_time, &at_command_counter);
-
-        // Se c'è un dato disponibile sulla UART0 (PC), invialo alla UART1 (ESP32)
-        if (uart_is_readable(uart0)) {
-            uint8_t data = uart_getc(uart0);
-            uart_putc(uart1, data);
-        }
-
-        // Se c'è un dato disponibile sulla UART1 (ESP32), invialo alla UART0 (PC)
-        if (uart_is_readable(uart1)) {
-            uint8_t data = uart_getc(uart1);
-            uart_putc(uart0, data);
-        }
-    }
+    return 0;
 }

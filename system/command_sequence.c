@@ -3,14 +3,13 @@
 #include "command_sequence.h"
 #include "config.h"
 
-
 at_command_t at_command_sequence[] = {
     {STATE_SEND_AT_GMR, "", "Inviando AT+GMR alla UART1", STATE_SEND_AT_CWMODE},
     {STATE_SEND_AT_CWMODE, "", "Inviando AT+CWMODE=1 alla UART1", STATE_SEND_AT_CONNECT_WIFI},
     {STATE_SEND_AT_CONNECT_WIFI, "", "Inviando AT+CWJAP alla UART1", STATE_SEND_AT_CWJAP},
     {STATE_SEND_AT_CWJAP, "", "Inviando AT+CWJAP? alla UART1", STATE_SEND_AT_CIFSR},
     {STATE_SEND_AT_CIFSR, "", "Inviando AT+CIFSR alla UART1", STATE_COMPLETE},
-    {STATE_COMPLETE, "", "Configurazione completata.", STATE_IDLE}
+    {STATE_COMPLETE, "", "Conf AT ESP32 finished.", STATE_IDLE}
 };
 
 bool update_command_sequence(iot_config_t *config) 
